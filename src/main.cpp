@@ -14,6 +14,9 @@ limitations under the License.
 ==============================================================================*/
 
 #include <Arduino.h>
+#include "esp_system.h"
+#include <driver/uart.h>
+#include <driver/gpio.h>
 
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
@@ -34,20 +37,116 @@ int inference_count = 0;
 
 // area de memoria utilizada para entrada, saida e buffer intermediarios
 // achar o valor otimo eh um multiplo de 16 e que seja o menor possivel (tentativa e erro)
-constexpr int kTensorArenaSize = 2000 * 16;
+constexpr int kTensorArenaSize = 3422 * 16;
 uint8_t tensor_arena[kTensorArenaSize];
 }  // namespace
+
+#define INPUT_IMAGE_WIDTH 32
+#define INPUT_IMAGE_HEIGHT 32
+#define INPUT_IMAGE_CHANNELS 3
+int totalExpectedDataAmount = INPUT_IMAGE_WIDTH * INPUT_IMAGE_HEIGHT * INPUT_IMAGE_CHANNELS;
+
+#define UART_NUMBER (UART_NUM_0)
+#define TXD_PIN (GPIO_NUM_1) //(U0TXD)
+#define RXD_PIN (GPIO_NUM_3) //(U0RXD)
+#define RX_BUF_SIZE 1024
+
+void initUart(uart_port_t uart_num)
+{
+    const uart_config_t uart_config = {
+        .baud_rate = 115200,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
+        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+        .source_clk = UART_SCLK_APB};
+
+    // We will not use a buffer for sending data.
+    uart_driver_install(uart_num, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
+
+    // Configure UART parameters
+    ESP_ERROR_CHECK(uart_param_config(uart_num, &uart_config));
+    // Cnfigure the physical GPIO pins to which the UART device will be connected.
+    ESP_ERROR_CHECK(uart_set_pin(uart_num, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+}
+
+void readUartBytes(float *data, int imageSize)
+{
+    uint8_t *rxBuffer = (uint8_t *)malloc(RX_BUF_SIZE + 1);
+    int rxIdx = 0;
+    int rxBytes = 0;
+
+    for (;;)
+    {
+        rxBytes = uart_read_bytes(UART_NUMBER, rxBuffer, RX_BUF_SIZE, 1000 / portTICK_PERIOD_MS);
+        if (rxBytes > 0)
+        {
+            for (int i = 0; i < rxBytes; rxIdx++, i++)
+            {
+                data[rxIdx] = static_cast<float>(rxBuffer[i]) / 255.0f;
+            }
+        }
+        if (rxIdx >= imageSize - 1)
+        {
+            rxIdx = 0;
+            break;
+        }
+    }
+    return;
+}
+
+int sendData(const char *data)
+{
+    const int len = strlen(data);
+    const int txBytes = uart_write_bytes(UART_NUMBER, data, len);
+    return txBytes;
+}
+
+void normalizeImageData(float *data, int imageSize)
+{
+    for (int i = 0; i < imageSize; i++)
+    {
+        data[i] = data[i] / 255.0f;
+    }
+}
+
+void sendBackPredictions(TfLiteTensor *output)
+{
+    // Read the predicted y values from the model's output tensor
+    char str[250] = {0};
+    char buf[20] = {0};
+    int numElements = output->dims->data[1];
+    for (int i = 0; i < numElements; i++)
+    {
+        sprintf(buf, "%e,", static_cast<float>(output->data.f[i]));
+        strcat(str, buf);
+    }
+    strcat(str, "\n");
+    sendData(str);
+}
+
+void doInference()
+{
+    TfLiteStatus invoke_status = interpreter->Invoke();
+    if (invoke_status != kTfLiteOk)
+    {
+        // Serial.println("erro");
+        return;
+    }
+}
 
 // The name of this function is important for Arduino compatibility.
 void setup() {
 
+  initUart(UART_NUMBER);
+
   // ESP32 Serial
-  Serial.begin(115200);
-  delay(2000);
+  // Serial.begin(115200);
+  // delay(2000);
 
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
-  model = tflite::GetModel(resnet8_model_1_tflite);
+  model = tflite::GetModel(resnet8_model_2_tflite);
   if (model->version() != TFLITE_SCHEMA_VERSION) {
     MicroPrintf("Model provided is schema version %d not equal to supported "
                 "version %d.", model->version(), TFLITE_SCHEMA_VERSION);
@@ -55,7 +154,7 @@ void setup() {
   }
 
   // Pull in only the operation implementations we need.
-  static tflite::MicroMutableOpResolver<7> resolver;
+  static tflite::MicroMutableOpResolver<9> resolver;
   if (resolver.AddFullyConnected() != kTfLiteOk) {
     return;
   }
@@ -77,6 +176,12 @@ void setup() {
   if (resolver.AddSoftmax() != kTfLiteOk) {
     return;
   }
+  if (resolver.AddQuantize() != kTfLiteOk) {
+    return;
+  }
+  if (resolver.AddDequantize() != kTfLiteOk) {
+    return;
+  }
 
   // Build an interpreter to run the model with.
   static tflite::MicroInterpreter static_interpreter(
@@ -90,9 +195,9 @@ void setup() {
     return;
   }
 
-  Serial.print("arena_used_bytes: ");
-  Serial.println(interpreter->arena_used_bytes());
-  while(1);
+  // Serial.print("arena_used_bytes: ");
+  // Serial.println(interpreter->arena_used_bytes());
+  // while(1);
 
   // Obtain pointers to the model's input and output tensors.
   input = interpreter->input(0);
@@ -104,48 +209,10 @@ void setup() {
 
 // The name of this function is important for Arduino compatibility.
 void loop() {
-  // // Calculate an x value to feed into the model. We compare the current
-  // // inference_count to the number of inferences per cycle to determine
-  // // our position within the range of possible x values the model was
-  // // trained on, and use this to calculate a value.
-  // float position = static_cast<float>(inference_count) /
-  //                  static_cast<float>(kInferencesPerCycle);
-  // float x = position * kXrange;
-
-  // // Quantize the input from floating-point to integer
-  // int8_t x_quantized = x / input->params.scale + input->params.zero_point;
-  // // Place the quantized input in the model's input tensor
-  // input->data.int8[0] = x_quantized;
-
-  // // Run inference, and report any error
-  // TfLiteStatus invoke_status = interpreter->Invoke();
-  // if (invoke_status != kTfLiteOk) {
-  //   MicroPrintf("Invoke failed on x: %f\n",
-  //                        static_cast<double>(x));
-  //   return;
-  // }
-
-  // // Obtain the quantized output from model's output tensor
-  // int8_t y_quantized = output->data.int8[0];
-  // // Dequantize the output from integer to floating-point
-  // float y = (y_quantized - output->params.zero_point) * output->params.scale;
-
-  // // Output the results. A custom HandleOutput function can be implemented
-  // // for each supported hardware target.
-  // // HandleOutput(x, y);
-  // Serial.print("x: ");
-  // Serial.print(x);
-
-  // Serial.print(" y: ");
-  // Serial.print(y);
-
-  // Serial.print(" gt: ");
-  // Serial.println(sin(x));
-
-  // delay(500);
-
-  // // Increment the inference_counter, and reset it if we have reached
-  // // the total number per cycle
-  // inference_count += 1;
-  // if (inference_count >= kInferencesPerCycle) inference_count = 0;
+  readUartBytes(input->data.f, totalExpectedDataAmount);
+  // long long start_time = esp_timer_get_time();
+  doInference();
+  // long long total_time = (esp_timer_get_time() - start_time);
+  // Serial.println(total_time/1000);
+  sendBackPredictions(output);
 }

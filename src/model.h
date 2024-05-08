@@ -28,7 +28,10 @@ limitations under the License.
 // extern const unsigned char g_model[];
 // extern const int g_model_len;
 
-extern const unsigned char resnet8_model_1_tflite[];
-extern const unsigned int resnet8_model_1_tflite_len;
+// extern const unsigned char resnet8_model_1_tflite[];
+// extern const unsigned int resnet8_model_1_tflite_len;
+
+extern const unsigned char resnet8_model_2_tflite[];
+extern const unsigned int resnet8_model_2_tflite_len;
 
 #endif  // TENSORFLOW_LITE_MICRO_EXAMPLES_HELLO_WORLD_MODEL_H_
