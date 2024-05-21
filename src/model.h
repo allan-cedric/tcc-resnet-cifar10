@@ -28,10 +28,24 @@ limitations under the License.
 // extern const unsigned char g_model[];
 // extern const int g_model_len;
 
-// extern const unsigned char resnet8_model_1_tflite[];
-// extern const unsigned int resnet8_model_1_tflite_len;
+// ResNet8
+// extern const unsigned char models_resnet8_resnet8_model_optimized_tflite[];
+// extern const unsigned int models_resnet8_resnet8_model_optimized_tflite_len;
 
-extern const unsigned char resnet8_model_2_tflite[];
-extern const unsigned int resnet8_model_2_tflite_len;
+// ResNet14
+// extern const unsigned char models_resnet14_resnet14_model_optimized_tflite[];
+// extern const unsigned int models_resnet14_resnet14_model_optimized_tflite_len;
+
+// ResNet20
+// extern const unsigned char models_resnet20_resnet20_model_optimized_tflite[];
+// extern const unsigned int models_resnet20_resnet20_model_optimized_tflite_len;
+
+// ResNet26
+// extern const unsigned char models_resnet26_resnet26_model_optimized_tflite[];
+// extern const unsigned int models_resnet26_resnet26_model_optimized_tflite_len;
+
+// ResNet32
+extern const unsigned char models_resnet32_resnet32_model_optimized_tflite[];
+extern const unsigned int models_resnet32_resnet32_model_optimized_tflite_len;
 
 #endif  // TENSORFLOW_LITE_MICRO_EXAMPLES_HELLO_WORLD_MODEL_H_

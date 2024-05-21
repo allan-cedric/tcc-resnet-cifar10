@@ -1,0 +1,6 @@
+#!/bin/bash
+
+RESNET_TFLITE_MODEL_PATH=$1
+
+echo "xxd -i $RESNET_TFLITE_MODEL_PATH > ./src/${RESNET_TFLITE_MODEL_PATH##*/}.cc"
+xxd -i $RESNET_TFLITE_MODEL_PATH > ./src/${RESNET_TFLITE_MODEL_PATH##*/}.cc
