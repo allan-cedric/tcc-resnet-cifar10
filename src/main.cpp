@@ -114,7 +114,7 @@ void normalizeImageData(float *data, int imageSize)
     }
 }
 
-void sendBackPredictions(TfLiteTensor *output, double total_time)
+void sendBackPredictions(TfLiteTensor *output, double total_time, int ret)
 {
     // Read the predicted y values from the model's output tensor
     char str[500] = {0};
@@ -130,18 +130,24 @@ void sendBackPredictions(TfLiteTensor *output, double total_time)
     sprintf(buf, "%e,", total_time_ms);
     strcat(str, buf);
 
+    sprintf(buf, "%i,", ret);
+    strcat(str, buf);
+
     strcat(str, "\n");
     sendData(str);
 }
 
-void doInference()
+int doInference()
 {
     TfLiteStatus invoke_status = interpreter->Invoke();
     if (invoke_status != kTfLiteOk)
     {
         // Serial.println("erro");
-        return;
+        digitalWrite(LED_BUILTIN, LOW);
+        return invoke_status;
     }
+    digitalWrite(LED_BUILTIN, HIGH);
+    return 0;
 }
 
 // The name of this function is important for Arduino compatibility.
@@ -243,8 +249,8 @@ void setup() {
 void loop() {
   readUartBytes(input->data.f, totalExpectedDataAmount);
   int64_t start_time = esp_timer_get_time();
-  doInference();
+  int ret = doInference();
   int64_t total_time = (esp_timer_get_time() - start_time);
   // Serial.println(total_time/1000);
-  sendBackPredictions(output, (double)total_time);
+  sendBackPredictions(output, (double)total_time, ret);
 }
