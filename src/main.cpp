@@ -149,6 +149,8 @@ void setup() {
 
   initUart(UART_NUMBER);
 
+  pinMode(LED_BUILTIN, OUTPUT);
+
   // ESP32 Serial
   // Serial.begin(115200);
   // delay(2000);
@@ -232,6 +234,9 @@ void setup() {
 
   // Keep track of how many inferences we have performed.
   inference_count = 0;
+
+  // pronto para iniciar
+  digitalWrite(LED_BUILTIN, HIGH);
 }
 
 // The name of this function is important for Arduino compatibility.
