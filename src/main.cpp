@@ -37,11 +37,11 @@ int inference_count = 0;
 
 // area de memoria utilizada para entrada, saida e buffer intermediarios
 // achar o valor otimo eh um multiplo de 16 e que seja o menor possivel (tentativa e erro)
-// constexpr int kTensorArenaSize = 3422 * 16; // ResNet8
+constexpr int kTensorArenaSize = 3422 * 16; // ResNet8
 // constexpr int kTensorArenaSize = 4647 * 16; // ResNet14
 // constexpr int kTensorArenaSize = 4847 * 16; // ResNet20
 // constexpr int kTensorArenaSize = 5048 * 16; // ResNet26
-constexpr int kTensorArenaSize = 5248 * 16; // ResNet32
+// constexpr int kTensorArenaSize = 5248 * 16; // ResNet32
 uint8_t tensor_arena[kTensorArenaSize];
 }  // namespace
 
@@ -114,10 +114,10 @@ void normalizeImageData(float *data, int imageSize)
     }
 }
 
-void sendBackPredictions(TfLiteTensor *output)
+void sendBackPredictions(TfLiteTensor *output, double total_time)
 {
     // Read the predicted y values from the model's output tensor
-    char str[250] = {0};
+    char str[500] = {0};
     char buf[20] = {0};
     int numElements = output->dims->data[1];
     for (int i = 0; i < numElements; i++)
@@ -125,6 +125,11 @@ void sendBackPredictions(TfLiteTensor *output)
         sprintf(buf, "%e,", static_cast<float>(output->data.f[i]));
         strcat(str, buf);
     }
+
+    double total_time_ms = total_time / 1000.0;
+    sprintf(buf, "%e,", total_time_ms);
+    strcat(str, buf);
+
     strcat(str, "\n");
     sendData(str);
 }
@@ -155,7 +160,7 @@ void setup() {
   // copying or parsing, it's a very lightweight operation.
   
   // ResNet8
-  // model = tflite::GetModel(models_resnet8_resnet8_model_optimized_tflite);
+  model = tflite::GetModel(models_resnet8_resnet8_model_optimized_tflite);
 
   // ResNet14
   // model = tflite::GetModel(models_resnet14_resnet14_model_optimized_tflite);
@@ -167,7 +172,7 @@ void setup() {
   // model = tflite::GetModel(models_resnet26_resnet26_model_optimized_tflite);
 
   // ResNet32
-  model = tflite::GetModel(models_resnet32_resnet32_model_optimized_tflite);
+  // model = tflite::GetModel(models_resnet32_resnet32_model_optimized_tflite);
   
   if (model->version() != TFLITE_SCHEMA_VERSION) {
     MicroPrintf("Model provided is schema version %d not equal to supported "
@@ -232,9 +237,9 @@ void setup() {
 // The name of this function is important for Arduino compatibility.
 void loop() {
   readUartBytes(input->data.f, totalExpectedDataAmount);
-  // long long start_time = esp_timer_get_time();
+  int64_t start_time = esp_timer_get_time();
   doInference();
-  // long long total_time = (esp_timer_get_time() - start_time);
+  int64_t total_time = (esp_timer_get_time() - start_time);
   // Serial.println(total_time/1000);
-  sendBackPredictions(output);
+  sendBackPredictions(output, (double)total_time);
 }
