@@ -83,6 +83,8 @@ void readUartBytes(float *data, int imageSize)
     for (;;)
     {
         rxBytes = uart_read_bytes(UART_NUMBER, rxBuffer, RX_BUF_SIZE, 1000 / portTICK_PERIOD_MS);
+        if(rxBytes < 0)
+          esp_restart();
         if (rxBytes > 0)
         {
             for (int i = 0; i < rxBytes; rxIdx++, i++)
