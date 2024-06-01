@@ -38,8 +38,8 @@ int inference_count = 0;
 // area de memoria utilizada para entrada, saida e buffer intermediarios
 // achar o valor otimo eh um multiplo de 16 e que seja o menor possivel (tentativa e erro)
 // constexpr int kTensorArenaSize = 3422 * 16; // ResNet8
-constexpr int kTensorArenaSize = 4647 * 16; // ResNet14
-// constexpr int kTensorArenaSize = 4847 * 16; // ResNet20
+// constexpr int kTensorArenaSize = 4647 * 16; // ResNet14
+constexpr int kTensorArenaSize = 4847 * 16; // ResNet20
 // constexpr int kTensorArenaSize = 5048 * 16; // ResNet26
 // constexpr int kTensorArenaSize = 5248 * 16; // ResNet32
 uint8_t tensor_arena[kTensorArenaSize];
@@ -173,10 +173,10 @@ void setup() {
   // model = tflite::GetModel(models_resnet8_resnet8_model_optimized_tflite);
 
   // ResNet14
-  model = tflite::GetModel(models_resnet14_resnet14_model_optimized_tflite);
+  // model = tflite::GetModel(models_resnet14_resnet14_model_optimized_tflite);
 
   // ResNet20
-  // model = tflite::GetModel(models_resnet20_resnet20_model_optimized_tflite);
+  model = tflite::GetModel(models_resnet20_resnet20_model_optimized_tflite);
 
   // ResNet26
   // model = tflite::GetModel(models_resnet26_resnet26_model_optimized_tflite);
