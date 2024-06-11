@@ -75,6 +75,10 @@ output_details = interpreter.get_output_details()
 # p = infer_with_TF_lite(interpreter, input_details, output_details, x_test[0])
 # print(p)
 
+print("Starting in 5 seconds...")
+time.sleep(5)
+print("Started!")
+
 ### PREDICTIONS ###
 
 i = 0
