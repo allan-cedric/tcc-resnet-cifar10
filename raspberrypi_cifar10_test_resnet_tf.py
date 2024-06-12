@@ -14,7 +14,7 @@ from sklearn.metrics import classification_report, confusion_matrix, ConfusionMa
 print(sys.argv)
 
 if len(sys.argv) != 2:
-    print("usage: python3 raspberrypi_cifar10_test_resnet_tflite.py [tflite model path]")
+    print("usage: python3 raspberrypi_cifar10_test_resnet_tf.py [tf model path]")
     exit(1)
 
 ### CIFAR-10 ###
@@ -62,6 +62,10 @@ def infer_with_TF(raw_image):
 # p = infer_with_TF(x_test[0])
 # print(p)
 # exit(1)
+
+print("Starting in 5 seconds...")
+time.sleep(5)
+print("Started!")
 
 ### PREDICTIONS ###
 
